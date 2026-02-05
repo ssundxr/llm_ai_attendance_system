@@ -1,4 +1,7 @@
 flask
 flask-sqlalchemy
-opencv-contrib-python
+opencv-python-headless
+face-recognition
 numpy
+cmake
+gunicorn

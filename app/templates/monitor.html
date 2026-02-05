@@ -4,9 +4,89 @@
 <div class="text-center">
     <h2>Live Attendance Monitor</h2>
     <p class="text-muted">Faces are detected and attendance is marked automatically.</p>
-    <div class="d-flex justify-content-center">
-        <img src="{{ url_for('main.video_feed') }}" width="800" height="600"
-            class="img-fluid border border-dark rounded">
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="position-relative">
+                <video id="video" width="640" height="480" autoplay muted
+                    style="width: 100%; max-width: 640px; border-radius: 8px;"></video>
+                <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+                <canvas id="overlay" width="640" height="480"
+                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
+            </div>
+            <div id="status" class="mt-2 text-info">Starting camera...</div>
+        </div>
     </div>
 </div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const overlay = document.getElementById('overlay');
+    const status = document.getElementById('status');
+    const ctx = canvas.getContext('2d');
+    const overlayCtx = overlay.getContext('2d');
+
+    // Access webcam
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+            status.innerText = "Camera active. Processing...";
+            startProcessing();
+        })
+        .catch(err => {
+            console.error("Error accessing webcam:", err);
+            status.innerText = "Error accessing webcam. Please allow permissions.";
+            status.className = "mt-2 text-danger";
+        });
+
+    function startProcessing() {
+        setInterval(() => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                // Draw video frame to canvas
+                ctx.drawImage(video, 0, 0, 640, 480);
+                
+                // Convert to blob/base64
+                const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+                
+                // Send to server
+                fetch('{{ url_for("main.process_frame") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ image: dataURL })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Clear overlay
+                    overlayCtx.clearRect(0, 0, 640, 480);
+                    
+                    if (data.faces) {
+                        data.faces.forEach(face => {
+                            // Scale coordinates if displayed video size implies scaling, 
+                            // but here we force 640x480 match so it's direct mapping
+                            const { x, y, w, h, name, color } = face;
+                            
+                            // Draw box
+                            overlayCtx.strokeStyle = color;
+                            overlayCtx.lineWidth = 2;
+                            overlayCtx.strokeRect(x, y, w, h);
+                            
+                            // Draw background for text
+                            overlayCtx.fillStyle = color;
+                            overlayCtx.fillRect(x, y + h, w, 30);
+                            
+                            // Draw text
+                            overlayCtx.fillStyle = 'white';
+                            overlayCtx.font = '16px Arial';
+                            overlayCtx.fillText(name, x + 5, y + h + 20);
+                        });
+                    }
+                })
+                .catch(err => console.error("Error processing frame:", err));
+            }
+        }, 200); // 5 FPS
+    }
+</script>
 {% endblock %}

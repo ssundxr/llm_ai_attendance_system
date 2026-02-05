@@ -122,89 +122,80 @@ def attendance():
     records = Attendance.query.order_by(Attendance.timestamp.desc()).all()
     return render_template('attendance_view.html', records=records)
 
-@main.route('/video_feed')
-def video_feed():
-    from flask import current_app
-    app = current_app._get_current_object()
-    return Response(gen_frames(app), mimetype='multipart/x-mixed-replace; boundary=frame')
+import base64
 
-def gen_frames(app):
-    # Try using DirectShow backend for Windows (fixes MSMF errors)
-    camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-    
-    if not camera.isOpened():
-        print("Error: Could not open camera.")
-        # Return a black frame with text
-        blank_image = np.zeros((480, 640, 3), np.uint8)
-        cv2.putText(blank_image, "Camera Not Found", (200, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        ret, buffer = cv2.imencode('.jpg', blank_image)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-        return
+@main.route('/process_frame', methods=['POST'])
+def process_frame():
+    data = request.get_json()
+    if not data or 'image' not in data:
+        return {'error': 'No image data'}, 400
+
+    # Decode image
+    image_data = data['image'].split(',')[1]
+    image_bytes = base64.b64decode(image_data)
+    np_arr = np.frombuffer(image_bytes, np.uint8)
+    frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     model_loaded = load_model()
-    
-    last_attendance_time = {} 
-    
-    # Load names for display
-    names = {}
-    with app.app_context():
-        for s in Student.query.all():
-            names[s.id] = s.name
+    faces_data = []
 
-    while True:
-        success, frame = camera.read()
-        if not success:
-             break
+    try:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Using the same parameters as before
+        faces_rect = face_cascade.detectMultiScale(gray, 1.1, 4)
         
-        try:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # Relaxed parameters: scaleFactor 1.1 (more detailed), minNeighbors 4
-            faces_rect = face_cascade.detectMultiScale(gray, 1.1, 4)
-            
-            for (x, y, w, h) in faces_rect:
-                name = "Unknown"
-                display_label = "Unknown"
-                confidence_text = ""
-                
-                if model_loaded:
-                    roi_gray = gray[y:y+h, x:x+w]
-                    try:
-                        id_, confidence = recognizer.predict(roi_gray)
+        # Load names (caching this would be better but keeping simple for now)
+        names = {}
+        with current_app.app_context():
+            for s in Student.query.all():
+                names[s.id] = s.name
+
+        last_attendance_time = {} # We lose this state each request with stateless HTTP :(. 
+        # Ideally, we should store this in a global var or DB/Cache.
+        # For this simple app, let's use a global var in this module carefully.
+        global global_last_attendance
+        if 'global_last_attendance' not in globals():
+            global_last_attendance = {}
+
+        for (x, y, w, h) in faces_rect:
+            name = "Unknown"
+            display_label = "Unknown"
+            color = "#FF0000" # Red
+
+            if model_loaded:
+                roi_gray = gray[y:y+h, x:x+w]
+                try:
+                    id_, confidence = recognizer.predict(roi_gray)
+                    
+                    if confidence < 80:
+                        student_name = names.get(id_, "Unknown")
+                        display_label = f"{student_name} (ID:{id_})"
+                        color = "#00FF00" # Green
                         
-                        if confidence < 80: # Relaxed confidence slightly
-                            student_name = names.get(id_, "Unknown")
-                            display_label = f"{student_name} (ID:{id_})"
-                            confidence_text = f" {round(100 - confidence)}%"
-                            
-                            now = datetime.utcnow()
-                            if id_ not in last_attendance_time or (now - last_attendance_time[id_]) > timedelta(minutes=1):
-                                last_attendance_time[id_] = now
-                                try:
-                                    with app.app_context():
-                                        att = Attendance(student_id=id_, status='Present')
-                                        db.session.add(att)
-                                        db.session.commit()
-                                        print(f"Attendance marked for {name}")
-                                except Exception as e:
-                                    print(f"Error DB: {e}")
-                        else:
-                            display_label = "Unknown"
-                    except Exception as e:
-                        print(f"Prediction error: {e}")
+                        # Mark Attendance
+                        now = datetime.utcnow()
+                        if id_ not in global_last_attendance or (now - global_last_attendance[id_]) > timedelta(minutes=1):
+                            global_last_attendance[id_] = now
+                            try:
+                                with current_app.app_context():
+                                    att = Attendance(student_id=id_, status='Present')
+                                    db.session.add(att)
+                                    db.session.commit()
+                                    print(f"Attendance marked for {display_label}")
+                            except Exception as e:
+                                print(f"Error DB: {e}")
+                except Exception as e:
+                    print(f"Prediction error: {e}")
+            
+            faces_data.append({
+                'x': int(x), 'y': int(y), 'w': int(w), 'h': int(h),
+                'name': display_label,
+                'color': color
+            })
+            
+    except Exception as e:
+        print(f"Error processing frame: {e}")
 
-                # Draw rect and name inside the loop
-                color = (0, 255, 0) if display_label != "Unknown" else (0, 0, 255)
-                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                cv2.putText(frame, display_label + confidence_text, (x+5, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+    return {'faces': faces_data}
 
-        except Exception as e:
-            print(f"Error in video loop: {e}")
-
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame_bytes = buffer.tobytes()
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-    
-    camera.release()
+# Standard routes
