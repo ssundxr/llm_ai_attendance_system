@@ -6,10 +6,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies required for OpenCV and dlib
+# Install system dependencies required for OpenCV
 RUN apt-get update && apt-get install -y \
-    cmake \
-    build-essential \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*

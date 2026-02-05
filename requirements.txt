@@ -1,10 +1,5 @@
 flask
 flask-sqlalchemy
-opencv-python-headless
-face-recognition
+opencv-contrib-python-headless
 numpy
-cmake
 gunicorn
-streamlit
-streamlit-webrtc
-av
