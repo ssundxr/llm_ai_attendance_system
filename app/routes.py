@@ -16,8 +16,17 @@ else:
     print(f"Haarcascade loaded from {cv2.data.haarcascades}")
 
 recognizer = cv2.face.LBPHFaceRecognizer_create()
-TRAINER_PATH = 'instance/trainer.yml'
-FACES_DIR = 'known_faces'
+
+if os.environ.get('K_SERVICE') or os.environ.get('K_REVISION'):
+    # Cloud Run Environment - use /tmp
+    TRAINER_PATH = '/tmp/trainer.yml'
+    FACES_DIR = '/tmp/known_faces'
+    if not os.path.exists(FACES_DIR):
+        os.makedirs(FACES_DIR)
+else:
+    # Local Environment
+    TRAINER_PATH = 'instance/trainer.yml'
+    FACES_DIR = 'known_faces'
 
 def train_model():
     """Trains the LBPH model with images from known_faces directory."""

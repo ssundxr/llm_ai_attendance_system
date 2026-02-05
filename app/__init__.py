@@ -9,7 +9,13 @@ def create_app():
     app.config['SECRET_KEY'] = 'dev-secret-key-change-this'
     
     base_dir = os.path.abspath(os.path.dirname(__file__))
-    db_path = os.path.join(os.path.dirname(base_dir), 'instance', 'database.sqlite')
+    
+    # Use /tmp for database in Cloud Run to avoid read-only filesystem issues
+    if os.environ.get('K_SERVICE') or os.environ.get('K_REVISION'):
+        db_path = '/tmp/database.sqlite'
+    else:
+        db_path = os.path.join(os.path.dirname(base_dir), 'instance', 'database.sqlite')
+        
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

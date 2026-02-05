@@ -5,3 +5,6 @@ face-recognition
 numpy
 cmake
 gunicorn
+streamlit
+streamlit-webrtc
+av
