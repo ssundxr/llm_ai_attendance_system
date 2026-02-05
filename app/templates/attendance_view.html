@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Attendance Log</h2>
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">Name</th>
+            <th scope="col">Student ID</th>
+            <th scope="col">Time</th>
+            <th scope="col">Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in records %}
+        <tr>
+            <th scope="row">{{ loop.index }}</th>
+            <td>{{ record.student.name }}</td>
+            <td>{{ record.student.student_id }}</td>
+            <td>{{ record.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>
+                <span class="badge bg-success">{{ record.status }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

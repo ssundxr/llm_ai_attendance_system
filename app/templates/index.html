@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Welcome to AI Attendance</h1>
+        <p class="col-md-8 fs-4">A smart system to automatically mark attendance using Facial Recognition.</p>
+        <a class="btn btn-primary btn-lg" href="{{ url_for('main.monitor') }}" role="button">Start Live Monitor</a>
+        <a class="btn btn-secondary btn-lg" href="{{ url_for('main.register') }}" role="button">Register New Student</a>
+    </div>
+</div>
+{% endblock %}

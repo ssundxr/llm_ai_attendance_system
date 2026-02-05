@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <h2>Live Attendance Monitor</h2>
+    <p class="text-muted">Faces are detected and attendance is marked automatically.</p>
+    <div class="d-flex justify-content-center">
+        <img src="{{ url_for('main.video_feed') }}" width="800" height="600"
+            class="img-fluid border border-dark rounded">
+    </div>
+</div>
+{% endblock %}

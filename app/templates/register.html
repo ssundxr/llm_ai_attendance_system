@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Register New Student</div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Student ID</label>
+                        <input type="text" class="form-control" id="student_id" name="student_id" required>
+                    </div>
+                    <!-- 
+                    For now, we will assume a file upload for the face. 
+                    Later we can add live capture.
+                    -->
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Photo (Headshot)</label>
+                        <input type="file" class="form-control" id="file" name="file" accept="image/*" required>
+                        <div class="form-text">Upload a clear photo of the face.</div>
+                    </div>
+                    <button type="submit" class="btn btn-success">Register</button>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
