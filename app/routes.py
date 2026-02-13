@@ -129,7 +129,16 @@ def register():
 @main.route('/attendance')
 def attendance():
     records = Attendance.query.order_by(Attendance.timestamp.desc()).all()
-    return render_template('attendance_view.html', records=records)
+    
+    # Calculate Summary Stats
+    total_registered = Student.query.count()
+    # optimized: count distinct student_ids in attendance table
+    attended_student_ids = db.session.query(Attendance.student_id).distinct().all()
+    total_attended = len(attended_student_ids)
+    
+    return render_template('attendance_view.html', records=records, 
+                           total_registered=total_registered, 
+                           total_attended=total_attended)
 
 import base64
 

@@ -1,8 +1,35 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block content %}
-<h2>Attendance Log</h2>
+<h2>Attendance Summary</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3">
+            <div class="card-header">Total Registered</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ total_registered }}</h5>
+                <p class="card-text">Students registered in the system.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3">
+            <div class="card-header">Total Attended (Unique)</div>
+            <div class="card-body">
+                <h5 class="card-title">{{ total_attended }}</h5>
+                <p class="card-text">Students who have marked attendance at least once.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <canvas id="attendanceChart" width="400" height="400"></canvas>
+    </div>
+</div>
+
+<h3>Detailed Logs</h3>
 <table class="table table-striped table-hover">
+
     <thead>
         <tr>
             <th scope="col">#</th>
@@ -26,4 +53,47 @@
         {% endfor %}
     </tbody>
 </table>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var ctx = document.getElementById('attendanceChart').getContext('2d');
+        var totalRegistered = {{ total_registered }};
+        var totalAttended = {{ total_attended }};
+        var notAttended = totalRegistered - totalAttended;
+
+        var myChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Attended', 'Not Attended'],
+                datasets: [{
+                    label: 'Attendance status',
+                    data: [totalAttended, notAttended],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(255, 99, 132, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Attendance Overview'
+                    }
+                }
+            }
+        });
+    });
+</script>
 {% endblock %}
